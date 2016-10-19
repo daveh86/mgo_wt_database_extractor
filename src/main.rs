@@ -1,5 +1,5 @@
 extern crate libc;
-use libc::{c_int, size_t, c_void};
+use libc::{c_int, c_void};
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::ptr;
