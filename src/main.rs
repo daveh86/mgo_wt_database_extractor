@@ -74,10 +74,9 @@ fn main() {
 	let mut refetched_key = 0;
 	let mut refetched_value: *mut c_char = ptr::null_mut();
 
-//	let refetched_value: *mut CString = ptr::null_mut();
-
 	unsafe {
-		let res = conn_open(
+		// TODO: Error handling? https://doc.rust-lang.org/book/error-handling.html
+		conn_open(
 			home.as_ptr(),
 			ptr::null_mut(),
 			conf.as_ptr(),
