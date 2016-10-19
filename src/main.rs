@@ -43,10 +43,8 @@ extern {
     fn cursor_close(cursor: *mut WtCursor) -> c_int;
 
     // Cursor data manip
-    fn cursor_get_value_i64(cursor: *mut WtCursor, value: *mut i64) -> c_int;
     fn cursor_get_key_i64(cursor: *mut WtCursor, key: *mut i64) -> c_int;
     fn cursor_get_value_str(cursor: *mut WtCursor, value: *mut *mut c_char) -> c_int;
-    fn cursor_get_key_str(cursor: *mut WtCursor, key: *mut *mut c_char) -> c_int;
     fn cursor_set_value(cursor: *mut WtCursor, value: *mut c_void) -> ();
     fn cursor_set_key(cursor: *mut WtCursor, key: *mut c_void) -> ();
 

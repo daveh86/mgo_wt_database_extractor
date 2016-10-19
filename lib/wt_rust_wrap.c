@@ -39,11 +39,6 @@ int cursor_close(WT_CURSOR *cursor)
 	return (cursor->close(cursor));
 }
 
-int cursor_get_value_i64(WT_CURSOR *cursor, int64_t *value)
-{
-	return (cursor->get_value(cursor, value));
-}
-
 int cursor_get_key_i64(WT_CURSOR *cursor, int64_t *key)
 {
 	return (cursor->get_key(cursor, key));
@@ -52,11 +47,6 @@ int cursor_get_key_i64(WT_CURSOR *cursor, int64_t *key)
 int cursor_get_value_str(WT_CURSOR *cursor, char **value)
 {
         return (cursor->get_value(cursor, value));
-}
-
-int cursor_get_key_str(WT_CURSOR *cursor, char **key)
-{
-        return (cursor->get_key(cursor, key));
 }
 
 void cursor_set_value(WT_CURSOR *cursor, void *value) 
