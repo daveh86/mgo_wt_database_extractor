@@ -2,7 +2,6 @@
 int conn_open(char * home, WT_EVENT_HANDLER *event_handler, const char *config, WT_CONNECTION** conn)
 {
 	return(wiredtiger_open(home, event_handler, config, conn));
-	
 }
 
 int conn_close(WT_CONNECTION* conn, const char *config)
@@ -23,6 +22,11 @@ int session_close(WT_SESSION* session, const char *config)
 int create_table(WT_SESSION *session, const char *name, const char *config) 
 {
 	return (session->create(session, name, config));
+}
+
+int drop_table(WT_SESSION *session, const char *name, const char *config)
+{
+        return (session->drop(session, name, config));
 }
 
 int cursor_open(WT_SESSION* session, const char *uri, WT_CURSOR *to_dup, const char *config, WT_CURSOR **cursor)
