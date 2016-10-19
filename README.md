@@ -1,7 +1,7 @@
 Directory structure
 -------------------
 
-*lib* contains the wired tiger rust driver. 
+*lib* contains the wired tiger [Rust](https://www.rust-lang.org/) driver. 
 It requires that you have downloaded, compiled and 
 installed (`make install`) wiredtiger on your system:
 http://source.wiredtiger.com/develop/build-posix.html
