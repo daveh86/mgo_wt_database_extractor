@@ -65,6 +65,11 @@ fn main() {
 	// Variables
 	let home = CString::new("WT_TEST").unwrap();
 	let conf = CString::new("create,statistics=(fast)").unwrap();
+	let table_name = CString::new("table:mytable").unwrap();
+	let table_conf = CString::new("key_format=Q,value_format=S").unwrap();
+	let mut cursor: *mut WtCursor = ptr::null_mut();
+	let mut x: i64 = 123;
+	let x_raw = &mut x as *mut i64;
 
 	unsafe {
 		let res = conn_open(
@@ -78,6 +83,17 @@ fn main() {
 			ptr::null_mut(),
 			&mut session);
 
+		create_table(session, table_name.as_ptr(), table_conf.as_ptr());
+
+		cursor_open(session,
+					table_name.as_ptr(),
+					ptr::null_mut(),
+					ptr::null(),
+					&mut cursor);
+		cursor_set_key(cursor, x_raw as *mut c_void);
+		cursor_set_value(cursor, table_conf.as_ptr() as *mut c_void);
+		cursor_insert(cursor);
+		cursor_close(cursor);
 		session_close(session, ptr::null_mut());
 		conn_close(conn, ptr::null_mut());
 	}
