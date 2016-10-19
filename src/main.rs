@@ -6,10 +6,10 @@ use std::os::raw::c_char;
 use std::ptr;
 
 
-struct WtConnection;
-struct WtEventHandler;
-struct WtSession;
-struct WtCursor;
+enum WtConnection {}
+enum WtEventHandler {}
+enum WtSession {}
+enum WtCursor {}
 
 
 #[link(name = "wt_rust_wrap")]
