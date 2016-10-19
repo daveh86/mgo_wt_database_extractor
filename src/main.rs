@@ -39,7 +39,7 @@ extern {
 				   uri: *const c_char, to_dup: *mut WtCursor, config : *const c_char,
 				   cursor: *mut *mut WtCursor) -> c_int;
 
-    fn cusror_close(cursor: *mut WtCursor) -> c_int;
+    fn cursor_close(cursor: *mut WtCursor) -> c_int;
 
     // Cursor data manip
     fn cursor_get_value(cursor: *mut WtCursor, value: *mut c_void) -> c_int;
