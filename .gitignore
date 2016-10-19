@@ -1,0 +1,4 @@
+target
+WT_TEST
+lib/libwt_rust_wrap.*
+lib/wt_rust_wrap.o
