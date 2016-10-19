@@ -70,8 +70,8 @@ fn main() {
 	let mut cursor: *mut WtCursor = ptr::null_mut();
 
 	// Variables
-	let home = CString::new("/data/db").unwrap();
-	let conf = CString::new("create,statistics=(fast)").unwrap();
+	let db_path = CString::new("/data/db").unwrap();
+	let db_conf = CString::new("create,statistics=(fast)").unwrap();
 	let table_name = CString::new("table:_mdb_catalog").unwrap();
 
 	//let table_conf = CString::new("key_format=q,value_format=S").unwrap();
@@ -84,9 +84,9 @@ fn main() {
 	unsafe {
 		// TODO: Error handling? https://doc.rust-lang.org/book/error-handling.html
 		let ret = conn_open(
-			home.as_ptr(),
+			db_path.as_ptr(),
 			ptr::null_mut(),
-			conf.as_ptr(),
+			db_conf.as_ptr(),
 			&mut conn);
 
 		if ret != 0 {
