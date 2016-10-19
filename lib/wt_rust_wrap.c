@@ -39,12 +39,12 @@ int cursor_close(WT_CURSOR *cursor)
 	return (cursor->close(cursor));
 }
 
-int cursor_get_value(WT_CURSOR *cursor, void *value)
+int cursor_get_value(WT_CURSOR *cursor, void **value)
 {
 	return (cursor->get_value(cursor, value));
 }
 
-int cursor_get_key(WT_CURSOR *cursor, void *key)
+int cursor_get_key(WT_CURSOR *cursor, void **key)
 {
 	return (cursor->get_key(cursor, key));
 }

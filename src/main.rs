@@ -42,8 +42,8 @@ extern {
     fn cursor_close(cursor: *mut WtCursor) -> c_int;
 
     // Cursor data manip
-    fn cursor_get_value(cursor: *mut WtCursor, value: *mut c_void) -> c_int;
-    fn cursor_get_key(cursor: *mut WtCursor, key: *mut c_void) -> c_int;
+    fn cursor_get_value(cursor: *mut WtCursor, value: *mut *mut c_void) -> c_int;
+    fn cursor_get_key(cursor: *mut WtCursor, key: *mut *mut c_void) -> c_int;
     fn cursor_set_value(cursor: *mut WtCursor, value: *mut c_void) -> ();
     fn cursor_set_key(cursor: *mut WtCursor, key: *mut c_void) -> ();
 
@@ -71,6 +71,11 @@ fn main() {
 	let mut x: i64 = 123;
 	let x_raw = &mut x as *mut i64;
 
+	let mut refetched_key: *mut c_void = ptr::null_mut();
+
+//	let refetched_value: *mut CString = ptr::null_mut();
+	let mut refetched_value = "foo";
+
 	unsafe {
 		let res = conn_open(
 			home.as_ptr(),
@@ -94,6 +99,20 @@ fn main() {
 		cursor_set_value(cursor, table_conf.as_ptr() as *mut c_void);
 		cursor_insert(cursor);
 		cursor_close(cursor);
+
+		cursor_open(session,
+					table_name.as_ptr(),
+					ptr::null_mut(),
+					ptr::null(),
+					&mut cursor);
+		let ret = cursor_next(cursor);
+		println!("{}", ret);
+		let ret = cursor_get_key(cursor, &mut refetched_key);
+		println!("{}", ret);
+		println!("{}", std::ptr::read(refetched_key as *mut i64));
+//		cursor_get_value(cursor, refetched_value as *mut c_void);
+		cursor_close(cursor);
+
 		session_close(session, ptr::null_mut());
 		conn_close(conn, ptr::null_mut());
 	}
