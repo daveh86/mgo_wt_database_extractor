@@ -1,7 +1,7 @@
 [package]
 name = "wt_ffi"
 version = "0.1.0"
-authors = ["David Hows <howsdav@gmail.com>"]
+authors = ["David Hows <howsdav@gmail.com>", "Peter Schmidt <peter@peterjs.com>"]
 build = "build.rs"
 
 [dependencies]
