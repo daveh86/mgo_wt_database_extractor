@@ -122,10 +122,10 @@ fn get_tablenames(session: *mut WtSession, wanted: String, terrible_print_flag: 
                 if terrible_print_flag {
                     println!("namespace {} is file {}",
                              Cyan.paint(ns.clone()),
-                             Blue.paint(file.unwrap().to_string()));
+                             Blue.paint(file.unwrap().to_string().replace("\"","")));
                 }
                 if ns == wanted {
-                        let out = match file.unwrap() {
+                    let out = match file.unwrap() {
                         &Bson::String(ref s) => s.clone(),
                         _ => String::new(),
                     };
@@ -353,10 +353,6 @@ fn main() {
 
         if matches.opt_present("l") {
             list_tables(session);
-            let want = String::from("table:_mdb_catalog");
-            println!("{}", get_metadata(session, want));
-            println!("{:?}", get_tablenames(session, String::from("test.test"), true));
-
         } else {
             if out_path == None {
                 println!("No Outpath set!");
