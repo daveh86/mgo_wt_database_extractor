@@ -88,6 +88,7 @@ fn wt_err(code: i32) -> i32 {
     return code;
 }
 
+/// Retrieves the collections and indexes associated with a wanted namespace
 fn get_tablenames(session: *mut WtSession, wanted: String) -> Vec<String> {
     // WT_CURSOR*
     let mut cursor: *mut WtCursor = ptr::null_mut();
@@ -139,6 +140,7 @@ fn get_tablenames(session: *mut WtSession, wanted: String) -> Vec<String> {
     return vec;
 }
 
+/// Retrieves the metadata of a WiredTiger collection
 fn get_metadata(session: *mut WtSession, wanted: String) -> String {
     // WT_CURSOR*
     let mut cursor: *mut WtCursor = ptr::null_mut();
@@ -165,7 +167,7 @@ fn get_metadata(session: *mut WtSession, wanted: String) -> String {
     return String::new();
 }
 
-/// Lists the namespace -> (table, indexes) mappings of a WiredTiger db_path
+/// Lists the namespace -> (collection, indexes) mappings of a WiredTiger db_path
 fn list_tables(session: *mut WtSession, verbosity: i8) -> () {
 
     // WT_CURSOR*
@@ -304,7 +306,7 @@ fn copy_table(src_session: *mut WtSession, out_path: String, table_name: String)
     return 0;
 }
 
-//fn fix_destination_metadata(source: *mut WtSession, destination: String) -> i32 {
+//fn fix_destination_metadata(source: *mut WtSession, out_path: String) -> i32 {
 //    return 0;
 //}
 
@@ -380,7 +382,7 @@ fn main() {
                 println!("\nOn namespace:  {}", Cyan.paint(namespace.clone()));
                 for table_name in table_list {
                     copy_table(session, wt_out_path.clone(), table_name);
-//                    fix_destination_metadata(session, wt_out_path);
+//                    fix_destination_metadata(session, wt_out_path.clone());
                 }
                 println!("{}  {}{}",
                          "🍻",
