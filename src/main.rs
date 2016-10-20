@@ -1,7 +1,9 @@
+extern crate ansi_term;
 extern crate bson;
 extern crate libc;
 extern crate getopts;
 
+use ansi_term::Colour::{Blue, Cyan, Green, Red};
 use bson::{Bson, decode_document};
 use getopts::Options;
 use libc::c_void;
@@ -118,7 +120,9 @@ fn get_tablenames(session: *mut WtSession, wanted: String) -> Vec<String> {
                     _ => String::new(),
                 };
 
-                println!("collection {} is file {}", ns, file.unwrap());
+                println!("namespace {} is file {}",
+                         Cyan.paint(ns.clone()),
+                         Blue.paint(file.unwrap().to_string()));
                 if ns == wanted {
                         let out = match file.unwrap() {
                         &Bson::String(ref s) => s.clone(),
@@ -194,7 +198,9 @@ fn list_tables(session: *mut WtSession) -> () {
             let file = doc.get("ident");
             if file != None {
                 let ns = doc.get("ns").unwrap();
-                println!("collection {} is file {}", ns, file.unwrap());
+                println!("namespace {} is file {}",
+                         Cyan.paint(ns.to_string()),
+                         Blue.paint(file.unwrap().to_string()));
                 if doc.get("idxIdent") != None {
                     let idxdoc = doc.get("idxIdent").unwrap();
                     println!("indexes:");
@@ -354,27 +360,30 @@ fn main() {
                 println!("No Outpath set!");
                 return();
             }
-            if tables == None {
-                println!("No tables listed!");
-                return();
-            }
-
             let wt_out_path = match matches.opt_str("o") {
                 Some(s) => s,
                 None => panic!("No Outpath set!"),
             };
-            let namespace = match tables {
+
+            let namespace = match tables.clone() {
                 Some(s) => s,
                 None => String::new(),
             };
             let table_list = get_tablenames(session, namespace.clone());
+            if tables == None {
+                println!("{}", Red.paint("Pass a namespace from the list above with -t"));
+                return();
+            }
 
-            println!("\nCopying namespace:  {}", namespace);
+            println!("\nOn namespace:  {}", Cyan.paint(namespace.clone()));
             for table_name in table_list {
                 copy_table(session, wt_out_path.clone(), table_name);
 //                fix_destination_metadata(session, wt_out_path);
             }
-            println!("Completed operations on namespace:  {}", namespace);
+            println!("{}  {}{}",
+                     "🍻",
+                     Green.paint("Completed operations on namespace:  "),
+                     Cyan.paint(namespace));
         }
         session_close(session, ptr::null_mut());
         conn_close(conn, ptr::null_mut());
