@@ -109,7 +109,7 @@ fn get_tablenames(session: *mut WtSession, wanted: String) -> Vec<String> {
             &mut cursor));
 
         while wt_err(cursor_next(cursor)) == 0 {
-            cursor_get_value_item(cursor, &mut refetched_value, &mut refetched_len);
+            wt_err(cursor_get_value_item(cursor, &mut refetched_value, &mut refetched_len));
             let slicey = slice::from_raw_parts(refetched_value, refetched_len);
             let doc = decode_document(&mut Cursor::new(slicey.to_vec())).unwrap();
             let file = doc.get("ident");
@@ -189,7 +189,7 @@ fn list_tables(session: *mut WtSession, verbosity: i8) -> () {
         }
         while wt_err(cursor_next(cursor)) == 0 {
             wt_err(cursor_get_key_i64(cursor, &mut refetched_key));
-            cursor_get_value_item(cursor, &mut refetched_value, &mut refetched_len);
+            wt_err(cursor_get_value_item(cursor, &mut refetched_value, &mut refetched_len));
             let slicey = slice::from_raw_parts(refetched_value, refetched_len);
             let doc = decode_document(&mut Cursor::new(slicey.to_vec())).unwrap();
             let file = doc.get("ident");
@@ -234,7 +234,7 @@ fn copy_table(src_session: *mut WtSession, out_path: String, table_name: String)
 
     unsafe {
         // Acquire resources
-        let out_path_cstr = CString::new(out_path).unwrap();
+        let out_path_cstr = CString::new(out_path.clone()).unwrap();
         wt_err(conn_open(out_path_cstr.as_ptr(),
                          ptr::null_mut(),
                          out_conf.as_ptr(),
@@ -303,9 +303,128 @@ fn copy_table(src_session: *mut WtSession, out_path: String, table_name: String)
     return 0;
 }
 
-//fn fix_destination_metadata(source: *mut WtSession, out_path: String) -> i32 {
-//    return 0;
-//}
+fn fix_destination_metadata(src_session: *mut WtSession, out_path: String, namespace: String) -> i32 {
+    let out_conf = CString::new("create,statistics=(fast)").unwrap();
+
+    let mut dest_conn: *mut WtConnection = ptr::null_mut();
+    let mut dest_session: *mut WtSession = ptr::null_mut();
+    let mut src_cursor: *mut WtCursor = ptr::null_mut();
+    let mut dest_cursor: *mut WtCursor = ptr::null_mut();
+
+    let catalog_table = CString::new("table:_mdb_catalog").unwrap();
+    let size_store_table = CString::new("table:sizeStorer").unwrap();
+    let mut table_name = String::new();
+    let mut wt_table_name = CString::new("").unwrap();
+    let mut refetched_key: i64 = 0;
+    let mut refetched_value: *mut u8 = ptr::null_mut();
+    let mut refetched_len: usize = 0;
+
+    unsafe {
+        // Acquire resources
+        let out_path_cstr = CString::new(out_path).unwrap();
+        wt_err(conn_open(out_path_cstr.as_ptr(),
+                         ptr::null_mut(),
+                         out_conf.as_ptr(),
+                         &mut dest_conn));
+
+        wt_err(session_open(dest_conn,
+                            ptr::null_mut(),
+                            ptr::null_mut(),
+                            &mut dest_session));
+
+        wt_err(cursor_open(src_session,
+                           catalog_table.as_ptr(),
+                           ptr::null_mut(),
+                           ptr::null(),
+                           &mut src_cursor));
+
+        let mut success = false;
+        while wt_err(cursor_next(src_cursor)) == 0 && success == false {
+            wt_err(cursor_get_key_i64(src_cursor, &mut refetched_key));
+            wt_err(cursor_get_value_item(src_cursor, &mut refetched_value, &mut refetched_len));
+            let slicey = slice::from_raw_parts(refetched_value, refetched_len);
+            let doc = decode_document(&mut Cursor::new(slicey.to_vec())).unwrap();
+            let file = doc.get("ident");
+            if file != None {
+                let ns = doc.get("ns").unwrap();
+                if ns.to_string().replace("\"","") == namespace {
+                    table_name = file.unwrap().to_string().replace("\"","");
+                    wt_table_name = CString::new("table:".to_string() + &table_name).unwrap();
+                    success = true
+                }
+            }
+        }
+        if success == false {
+            panic!("Couldn't find metatdata for table {}", namespace);
+        }
+        cursor_close(src_cursor);
+
+        let exists = cursor_open(dest_session,
+                           catalog_table.as_ptr(),
+                           ptr::null_mut(),
+                           ptr::null(),
+                           &mut dest_cursor);
+
+        // Metadata doesn't exist. So make the table
+        if exists != 0 {
+            let table_config = get_metadata(src_session, "table:_mdb_catalog".to_string());
+            create_table(dest_session,
+                     catalog_table.as_ptr(),
+                     table_config.as_ptr() as *mut i8);
+            wt_err(cursor_open(dest_session,
+                           catalog_table.as_ptr(),
+                           ptr::null_mut(),
+                           ptr::null(),
+                           &mut dest_cursor));
+        }
+        cursor_set_key(dest_cursor, refetched_key as *mut c_void);        
+        cursor_set_value_item(dest_cursor, refetched_value, refetched_len);
+        wt_err(cursor_insert(dest_cursor));
+        cursor_close(dest_cursor);
+
+        // Now fix the sizeStorer table
+        wt_err(cursor_open(src_session,
+                           size_store_table.as_ptr(),
+                           ptr::null_mut(),
+                           ptr::null(),
+                           &mut src_cursor));
+
+        let exists = cursor_open(dest_session,
+                           size_store_table.as_ptr(),
+                           ptr::null_mut(),
+                           ptr::null(),
+                           &mut dest_cursor);
+
+        // No sizeStorer table, so we make that
+        if exists != 0 {
+            let table_config = get_metadata(src_session, "table:sizeStorer".to_string());
+            create_table(dest_session,
+                     size_store_table.as_ptr(),
+                     table_config.as_ptr() as *mut i8);
+            wt_err(cursor_open(dest_session,
+                           size_store_table.as_ptr(),
+                           ptr::null_mut(),
+                           ptr::null(),
+                           &mut dest_cursor));
+            // Add the catalog entry to sizeStorer, since we created
+            cursor_set_key_item(src_cursor, catalog_table.as_ptr() as *mut u8, 18);
+            wt_err(cursor_search(src_cursor));
+            wt_err(cursor_get_value_item(src_cursor, &mut refetched_value, &mut refetched_len));    
+            cursor_set_key_item(dest_cursor, catalog_table.as_ptr() as *mut u8, 18);
+            cursor_set_value_item(dest_cursor, refetched_value, refetched_len);
+            cursor_insert(dest_cursor);
+        }
+        cursor_set_key_item(src_cursor, wt_table_name.as_ptr() as *mut u8, table_name.len() + 6);
+        wt_err(cursor_search(src_cursor));
+        wt_err(cursor_get_value_item(src_cursor, &mut refetched_value, &mut refetched_len));
+        cursor_set_key_item(dest_cursor, wt_table_name.as_ptr() as *mut u8, table_name.len() + 6);
+        cursor_set_value_item(dest_cursor, refetched_value, refetched_len);
+        cursor_insert(dest_cursor);
+        conn_close(dest_conn, ptr::null_mut());
+
+    }
+    return 0;
+}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -378,9 +497,9 @@ fn main() {
 
                 println!("\nOn namespace:  {}", Cyan.paint(namespace.clone()));
                 for table_name in table_list {
-                    copy_table(session, wt_out_path.clone(), table_name);
-//                    fix_destination_metadata(session, wt_out_path.clone());
+                    copy_table(session, wt_out_path.clone(), table_name.clone());
                 }
+                fix_destination_metadata(session, wt_out_path.clone(), String::from(namespace));
                 println!("{}  {}{}",
                          "🍻",
                          Green.paint("Completed operations on namespace:  "),
