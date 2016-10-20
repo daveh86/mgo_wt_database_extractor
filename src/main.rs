@@ -3,7 +3,7 @@ extern crate libc;
 extern crate getopts;
 
 use bson::decode_document;
-use libc::{c_int, c_void};
+use libc::c_void;
 use std::ffi::CString;
 use std::io::Cursor;
 use std::os::raw::c_char;
@@ -23,46 +23,64 @@ extern {
     fn conn_open(home: *const c_char,
                  errhandler: *mut WtEventHandler,
                  config: *const c_char,
-                 conn: *mut *mut WtConnection) -> c_int;
+                 conn: *mut *mut WtConnection) -> i32;
 
     fn session_open(conn: *mut WtConnection,
                     errhandler: *mut WtEventHandler,
                     config: *const c_char,
-                    conn: *mut *mut WtSession) -> c_int;
+                    conn: *mut *mut WtSession) -> i32;
 
     fn session_close(session: *mut WtSession,
-                     config: *const c_char) -> c_int;
+                     config: *const c_char) -> i32;
 
     fn conn_close(conn: *mut WtConnection,
-                  config: *const c_char) -> c_int;
+                  config: *const c_char) -> i32;
 /*
     fn create_table(session: *mut WtSession,
-                    name: *const c_char, config: *const c_char) -> c_int;
+                    name: *const c_char, config: *const c_char) -> i32;
 
     fn drop_table(session: *mut WtSession,
-                  name: *const c_char, config: *const c_char) -> c_int;
+                  name: *const c_char, config: *const c_char) -> i32;
 */
     fn cursor_open(session: *mut WtSession,
                    uri: *const c_char, to_dup: *mut WtCursor, config : *const c_char,
-                   cursor: *mut *mut WtCursor) -> c_int;
+                   cursor: *mut *mut WtCursor) -> i32;
 
-    fn cursor_close(cursor: *mut WtCursor) -> c_int;
+    fn cursor_close(cursor: *mut WtCursor) -> i32;
 
     // Cursor data manip
-    fn cursor_get_key_i64(cursor: *mut WtCursor, key: *mut i64) -> c_int;
-//    fn cursor_get_value_str(cursor: *mut WtCursor, value: *mut *mut c_char) -> c_int;
-    fn cursor_get_value_item(cursor: *mut WtCursor, value: *mut *mut u8, sz: *mut usize) -> c_int;
-//    fn cursor_get_key_item(cursor: *mut WtCursor, key: *mut *mut u8, sz: *mut usize) -> c_int;
+    fn cursor_get_key_i64(cursor: *mut WtCursor, key: *mut i64) -> i32;
+//    fn cursor_get_value_str(cursor: *mut WtCursor, value: *mut *mut c_char) -> i32;
+    fn cursor_get_value_item(cursor: *mut WtCursor, value: *mut *mut u8, sz: *mut usize) -> i32;
+//    fn cursor_get_key_item(cursor: *mut WtCursor, key: *mut *mut u8, sz: *mut usize) -> i32;
 //    fn cursor_set_value(cursor: *mut WtCursor, value: *mut c_void) -> ();
 //    fn cursor_set_key(cursor: *mut WtCursor, key: *mut c_void) -> ();
 
 
     // Cursor actions
-//    fn cursor_insert(cursor: *mut WtCursor) -> c_int;
-    fn cursor_next(cursor: *mut WtCursor) -> c_int;
-//    fn cursor_perv(cursor: *mut WtCursor) -> c_int;
-//    fn cursor_search(cursor: *mut WtCursor) -> c_int;
-//    fn cursor_reset(cursor: *mut WtCursor) -> c_int;
+//    fn cursor_insert(cursor: *mut WtCursor) -> i32;
+    fn cursor_next(cursor: *mut WtCursor) -> i32;
+//    fn cursor_perv(cursor: *mut WtCursor) -> i32;
+//    fn cursor_search(cursor: *mut WtCursor) -> i32;
+//    fn cursor_reset(cursor: *mut WtCursor) -> i32;
+}
+
+fn wt_err(code: i32) -> i32 {
+    match code {
+        0 => 0,
+        -31800 => panic!("WT_ROLLBACK"),
+        -31801 => panic!("WT_DUPLICATE_KEY"),
+        -31802 => panic!("WT_ERROR"),
+        -31803 => -31803,
+        -31804 => panic!("WT_PANIC"),
+        -31805 => panic!("WT_RESTART"),
+        -31806 => panic!("WT_RUN_RECOVERY"),
+        -31807 => panic!("WT_CACHE_FULL"),
+        2 => panic!("WT_OPEN FAIL"),
+        _ => 1,
+    };
+    println!("code is {}", code);
+    return code;
 }
 
 fn list_tables(session: *mut WtSession) -> () {
@@ -80,21 +98,14 @@ fn list_tables(session: *mut WtSession) -> () {
     let mut refetched_len: usize = 0;
     unsafe {
         // TODO: Error handling? https://doc.rust-lang.org/book/error-handling.html
-        let ret = cursor_open(session,
+        wt_err(cursor_open(session,
             table_name.as_ptr(),
             ptr::null_mut(),
             ptr::null(),
-            &mut cursor);
+            &mut cursor));
 
-        if ret != 0 {
-            println!("Error. opening connection!");
-            return();
-        }
         while cursor_next(cursor) == 0 {
-            let ret = cursor_get_key_i64(cursor, &mut refetched_key);
-            if ret != 0 {
-                continue;
-            }
+            wt_err(cursor_get_key_i64(cursor, &mut refetched_key));
             cursor_get_value_item(cursor, &mut refetched_value, &mut refetched_len);
             let slicey = slice::from_raw_parts(refetched_value, refetched_len);
             let doc = decode_document(&mut Cursor::new(slicey.to_vec())).unwrap();
@@ -155,25 +166,17 @@ fn main() {
     let db_conf = CString::new("create,statistics=(fast)").unwrap();
 
     unsafe {
-        let ret = conn_open(
+        wt_err(conn_open(
             db_path.as_ptr(),
             ptr::null_mut(),
             db_conf.as_ptr(),
-            &mut conn);
-        if ret != 0 {
-            println!("Error opening connection!");
-            return();
-        }
+            &mut conn));
 
-        let ret = session_open(conn,
+        wt_err(session_open(conn,
             ptr::null_mut(),
             ptr::null_mut(),
-            &mut session);
+            &mut session));
 
-        if ret != 0 {
-            println!("Error opening session!");
-            return();
-        }
         if matches.opt_present("l") {
             list_tables(session);
         } else {
@@ -182,7 +185,7 @@ fn main() {
                 return();
             }
             if tables == None {
-                panic!("No tables listed");
+                println!("No tables listed");
                 return();
             }
             println!("do something else");
