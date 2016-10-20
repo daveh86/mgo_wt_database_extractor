@@ -52,7 +52,7 @@ extern {
 //    fn cursor_get_key_item(cursor: *mut WtCursor, key: *mut *mut u8, sz: *mut usize) -> c_int;
 //    fn cursor_set_value(cursor: *mut WtCursor, value: *mut c_void) -> ();
 //    fn cursor_set_key(cursor: *mut WtCursor, key: *mut c_void) -> ();
-     
+
 
     // Cursor actions
 //    fn cursor_insert(cursor: *mut WtCursor) -> c_int;
@@ -119,7 +119,7 @@ fn main() {
 	let mut conn: *mut WtConnection = ptr::null_mut();
 	// WT_SESSION*
         let mut session: *mut WtSession = ptr::null_mut();
-	
+
 	let db_path = CString::new("/data/db").unwrap();
         let db_conf = CString::new("create,statistics=(fast)").unwrap();
 
@@ -130,7 +130,7 @@ fn main() {
                         db_conf.as_ptr(),
                         &mut conn);
                 if ret != 0 {
-                        println!("Error. opening connection!");
+                        println!("Error opening connection!");
                         return();
                 }
 
@@ -140,7 +140,7 @@ fn main() {
                         &mut session);
 
                 if ret != 0 {
-                        println!("Error. opening connection!");
+                        println!("Error opening session!");
                         return();
                 }
 		list_tables(session);
