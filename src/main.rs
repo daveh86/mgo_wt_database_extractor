@@ -66,7 +66,7 @@ extern {
     // Cursor actions
     fn cursor_insert(cursor: *mut WtCursor) -> i32;
     fn cursor_next(cursor: *mut WtCursor) -> i32;
-//    fn cursor_perv(cursor: *mut WtCursor) -> i32;
+//    fn cursor_prev(cursor: *mut WtCursor) -> i32;
     fn cursor_search(cursor: *mut WtCursor) -> i32;
 //    fn cursor_reset(cursor: *mut WtCursor) -> i32;
 }
