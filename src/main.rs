@@ -162,6 +162,7 @@ fn get_metadata(session: *mut WtSession, wanted: String) -> String {
             wt_err(cursor_get_value_str(cursor, &mut key));
             return CStr::from_ptr(key).to_string_lossy().into_owned();
         }
+        cursor_close(cursor);
     }
     return String::new();
 }
