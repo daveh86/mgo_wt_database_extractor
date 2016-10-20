@@ -71,7 +71,7 @@ fn wt_err(code: i32) -> i32 {
         -31800 => panic!("WT_ROLLBACK"),
         -31801 => panic!("WT_DUPLICATE_KEY"),
         -31802 => panic!("WT_ERROR"),
-        -31803 => -31803,
+        -31803 => -31803, // WT_NOTFOUND
         -31804 => panic!("WT_PANIC"),
         -31805 => panic!("WT_RESTART"),
         -31806 => panic!("WT_RUN_RECOVERY"),
@@ -104,7 +104,7 @@ fn list_tables(session: *mut WtSession) -> () {
             ptr::null(),
             &mut cursor));
 
-        while cursor_next(cursor) == 0 {
+        while wt_err(cursor_next(cursor)) == 0 {
             wt_err(cursor_get_key_i64(cursor, &mut refetched_key));
             cursor_get_value_item(cursor, &mut refetched_value, &mut refetched_len);
             let slicey = slice::from_raw_parts(refetched_value, refetched_len);
