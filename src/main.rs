@@ -492,10 +492,16 @@ fn main() {
                 println!("{}", Red.paint("Pass a namespace from the list above with -n"));
                 return();
             }
-            for namespace in namespaces.split(" ") {
+            for _namespace in namespaces.split(" ") {
+                // Trim whitespace from namespace start and end, and
+                // skip whitespace-only namespaces
+                let namespace = _namespace.trim();
+                if namespace.is_empty() {
+                    continue;
+                }
                 let table_list = get_tablenames(session, String::from(namespace));
 
-                println!("\nOn namespace:  {}", Cyan.paint(namespace.clone()));
+                println!("\nOn namespace:  {}", Cyan.paint(namespace));
                 for table_name in table_list {
                     copy_table(session, wt_out_path.clone(), table_name.clone());
                 }
