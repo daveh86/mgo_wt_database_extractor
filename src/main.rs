@@ -55,7 +55,7 @@ extern {
 //    fn cursor_get_key_str(cursor: *mut WtCursor, key: *mut *mut c_char) -> i32;
     fn cursor_get_value_str(cursor: *mut WtCursor, value: *mut *mut c_char) -> i32;
     fn cursor_get_value_item(cursor: *mut WtCursor, value: *mut *mut u8, sz: *mut usize) -> i32;
-//    fn cursor_get_key_item(cursor: *mut WtCursor, key: *mut *mut u8, sz: *mut usize) -> i32;
+    fn cursor_get_key_item(cursor: *mut WtCursor, key: *mut *mut u8, sz: *mut usize) -> i32;
 //    fn cursor_set_value(cursor: *mut WtCursor, value: *mut c_void) -> ();
     fn cursor_set_key(cursor: *mut WtCursor, key: *mut c_void) -> ();
     fn cursor_set_value_item(cursor: *mut WtCursor, value: *mut u8, sz: usize) -> ();
@@ -63,7 +63,7 @@ extern {
 
 
     // Cursor actions
-//    fn cursor_insert(cursor: *mut WtCursor) -> i32;
+    fn cursor_insert(cursor: *mut WtCursor) -> i32;
     fn cursor_next(cursor: *mut WtCursor) -> i32;
 //    fn cursor_perv(cursor: *mut WtCursor) -> i32;
     fn cursor_search(cursor: *mut WtCursor) -> i32;
@@ -257,18 +257,30 @@ fn copy_table(src_session: *mut WtSession, out_path: String, table_name: String)
                            &mut dest_cursor));
 
         // Copy the data
+        let is_index = table_name.contains("index-");
         let mut refetched_key: i64 = 0;
         let mut refetched_value: *mut u8 = ptr::null_mut();
         let mut refetched_len: usize = 0;
         while wt_err(cursor_next(src_cursor)) == 0 {
 
             // Fetch the data from db_path
-            wt_err(cursor_get_key_i64(src_cursor, &mut refetched_key));
-            cursor_get_value_item(src_cursor, &mut refetched_value, &mut refetched_len);
+            if is_index {
+                wt_err(cursor_get_key_item(src_cursor, &mut refetched_value, &mut refetched_len));
+            }
+            else {
+                wt_err(cursor_get_key_i64(src_cursor, &mut refetched_key));
+            }
+            wt_err(cursor_get_value_item(src_cursor, &mut refetched_value, &mut refetched_len));
 
-            // TODO: Store the data in out_path
-//            wt_err(cursor_set_key_i64(dest_cursor, &mut refetched_key));
-//            cursor_set_value_item(dest_cursor, &mut refetched_value, &mut refetched_len);
+            // Store the data in out_path
+            if is_index {
+                cursor_set_key_item(dest_cursor, refetched_value, refetched_len);
+            }
+            else {
+                cursor_set_key(dest_cursor, refetched_key as *mut c_void);
+            }
+            cursor_set_value_item(dest_cursor, refetched_value, refetched_len);
+            wt_err(cursor_insert(dest_cursor));
         }
 
         // Cleanup resources in reverse order to how we acquired them
