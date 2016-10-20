@@ -58,6 +58,8 @@ extern {
 //    fn cursor_get_key_item(cursor: *mut WtCursor, key: *mut *mut u8, sz: *mut usize) -> i32;
 //    fn cursor_set_value(cursor: *mut WtCursor, value: *mut c_void) -> ();
     fn cursor_set_key(cursor: *mut WtCursor, key: *mut c_void) -> ();
+    fn cursor_set_value_item(cursor: *mut WtCursor, value: *mut u8, sz: usize) -> ();
+    fn cursor_set_key_item(cursor: *mut WtCursor, key: *mut u8, sz: usize) -> ();
 
 
     // Cursor actions
