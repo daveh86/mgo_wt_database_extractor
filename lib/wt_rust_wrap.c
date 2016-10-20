@@ -39,6 +39,11 @@ int cursor_close(WT_CURSOR *cursor)
 	return (cursor->close(cursor));
 }
 
+int cursor_get_value_i64(WT_CURSOR *cursor, int64_t *value)
+{
+	return (cursor->get_value(cursor, value));
+}
+
 int cursor_get_key_i64(WT_CURSOR *cursor, int64_t *key)
 {
 	return (cursor->get_key(cursor, key));
@@ -47,6 +52,35 @@ int cursor_get_key_i64(WT_CURSOR *cursor, int64_t *key)
 int cursor_get_value_str(WT_CURSOR *cursor, char **value)
 {
         return (cursor->get_value(cursor, value));
+}
+
+int cursor_get_key_str(WT_CURSOR *cursor, char **key)
+{
+        return (cursor->get_key(cursor, key));
+}
+
+int cursor_get_value_item(WT_CURSOR *cursor, char **value, int *size)
+{
+	WT_ITEM item;
+	int ret = 0;
+        ret = cursor->get_value(cursor, &item);
+	if (ret == 0) {
+		*value = (char *)item.data;
+		*size = (int)item.size;
+	}
+	return (ret);
+}
+
+int cursor_get_key_item(WT_CURSOR *cursor, char **key, int *size)
+{
+        WT_ITEM item;
+        int ret = 0;
+        ret = cursor->get_key(cursor, &item);
+        if (ret == 0) {
+                *key = (char *)item.data;
+                *size = (int)item.size;
+        }
+        return (ret);
 }
 
 void cursor_set_value(WT_CURSOR *cursor, void *value) 

@@ -1,7 +1,7 @@
 extern crate libc;
 use libc::{c_int, c_void};
 use std::ffi::CString;
-use std::ffi::CStr;
+//use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::ptr;
 
@@ -29,13 +29,13 @@ extern {
 
     fn conn_close(conn: *mut WtConnection,
 				  config: *const c_char) -> c_int;
-
+/*
     fn create_table(session: *mut WtSession,
 					name: *const c_char, config: *const c_char) -> c_int;
 
     fn drop_table(session: *mut WtSession,
 				  name: *const c_char, config: *const c_char) -> c_int;
-
+*/
     fn cursor_open(session: *mut WtSession,
 				   uri: *const c_char, to_dup: *mut WtCursor, config : *const c_char,
 				   cursor: *mut *mut WtCursor) -> c_int;
@@ -44,16 +44,19 @@ extern {
 
     // Cursor data manip
     fn cursor_get_key_i64(cursor: *mut WtCursor, key: *mut i64) -> c_int;
-    fn cursor_get_value_str(cursor: *mut WtCursor, value: *mut *mut c_char) -> c_int;
-    fn cursor_set_value(cursor: *mut WtCursor, value: *mut c_void) -> ();
-    fn cursor_set_key(cursor: *mut WtCursor, key: *mut c_void) -> ();
+//    fn cursor_get_value_str(cursor: *mut WtCursor, value: *mut *mut c_char) -> c_int;
+    fn cursor_get_value_item(cursor: *mut WtCursor, value: *mut *mut u8, sz: *mut usize) -> c_int;
+//    fn cursor_get_key_item(cursor: *mut WtCursor, key: *mut *mut u8, sz: *mut usize) -> c_int;
+//    fn cursor_set_value(cursor: *mut WtCursor, value: *mut c_void) -> ();
+//    fn cursor_set_key(cursor: *mut WtCursor, key: *mut c_void) -> ();
+     
 
     // Cursor actions
-    fn cursor_insert(cursor: *mut WtCursor) -> c_int;
+//    fn cursor_insert(cursor: *mut WtCursor) -> c_int;
     fn cursor_next(cursor: *mut WtCursor) -> c_int;
-    fn cursor_perv(cursor: *mut WtCursor) -> c_int;
-    fn cursor_search(cursor: *mut WtCursor) -> c_int;
-    fn cursor_reset(cursor: *mut WtCursor) -> c_int;
+//    fn cursor_perv(cursor: *mut WtCursor) -> c_int;
+//    fn cursor_search(cursor: *mut WtCursor) -> c_int;
+//    fn cursor_reset(cursor: *mut WtCursor) -> c_int;
 }
 
 fn main() {
@@ -63,61 +66,68 @@ fn main() {
 	// WT_SESSION*
 	let mut session: *mut WtSession = ptr::null_mut();
 
-	// Variables
-	let home = CString::new("WT_TEST").unwrap();
-	let conf = CString::new("create,statistics=(fast)").unwrap();
-	let table_name = CString::new("table:mytable").unwrap();
-	let table_conf = CString::new("key_format=q,value_format=S").unwrap();
+	// WT_CURSOR*
 	let mut cursor: *mut WtCursor = ptr::null_mut();
-	let mut x: i64 = 123;
-	let x_raw = &mut x as *mut i64;
-	let mut refetched_key = 0;
-	let mut refetched_value: *mut c_char = ptr::null_mut();
+
+	// Variables
+	let home = CString::new("/data/db").unwrap();
+	let conf = CString::new("create,statistics=(fast)").unwrap();
+	let table_name = CString::new("table:_mdb_catalog").unwrap();
+
+	//let table_conf = CString::new("key_format=q,value_format=S").unwrap();
+	//let mut x: i64 = 123;
+	//let x_raw = &mut x as *mut i64;
+	let mut refetched_key: i64 = 0;
+	let mut refetched_value: *mut u8 = ptr::null_mut();
+	let mut refetched_len: usize = 0;
 
 	unsafe {
 		// TODO: Error handling? https://doc.rust-lang.org/book/error-handling.html
-		conn_open(
+		let ret = conn_open(
 			home.as_ptr(),
 			ptr::null_mut(),
 			conf.as_ptr(),
 			&mut conn);
-		
-		session_open(conn,
+
+		if ret != 0 {
+			println!("Error. opening connection!");
+			return();
+		}
+
+		let ret = session_open(conn,
 			ptr::null_mut(),
 			ptr::null_mut(),
 			&mut session);
 
-		create_table(session, table_name.as_ptr(), table_conf.as_ptr());
+		if ret != 0 {
+                        println!("Error. opening connection!");
+                        return();
+		}
 
-		cursor_open(session,
-					table_name.as_ptr(),
-					ptr::null_mut(),
-					ptr::null(),
-					&mut cursor);
-		cursor_set_key(cursor, x_raw as *mut c_void);
-		cursor_set_value(cursor, table_conf.as_ptr() as *mut c_void);
-		cursor_insert(cursor);
+		let ret = cursor_open(session,
+			table_name.as_ptr(),
+			ptr::null_mut(),
+			ptr::null(),
+			&mut cursor);
+
+		if ret != 0 {
+                        println!("Error. opening connection!");
+                        return();
+		}
+		let mut counter = 0;
+		while cursor_next(cursor) == 0 {
+			let ret = cursor_get_key_i64(cursor, &mut refetched_key);
+			println!("get key returned: {}", ret);
+			println!("key is: {}", refetched_key);
+			cursor_get_value_item(cursor, &mut refetched_value, &mut refetched_len);
+			let stringy = String::from_raw_parts(refetched_value, refetched_len, refetched_len);
+			println!("value is: '{}'", stringy);
+			counter+=1;
+			println!("entry number: {}", counter);
+		}
 		cursor_close(cursor);
-
-		cursor_open(session,
-					table_name.as_ptr(),
-					ptr::null_mut(),
-					ptr::null(),
-					&mut cursor);
-		let ret = cursor_next(cursor);
-		println!("next returned: {}", ret);
-		let ret = cursor_get_key_i64(cursor, &mut refetched_key);
-		println!("get key returned: {}", ret);
-		println!("key is: {}", std::ptr::read(refetched_key as *mut i64));
-		cursor_get_value_str(cursor, &mut refetched_value);
-		println!("value is: '{}'", CStr::from_ptr(refetched_value).to_string_lossy().into_owned());
-		cursor_close(cursor);
-
-		drop_table(session, table_name.as_ptr(), ptr::null());
-
 		session_close(session, ptr::null_mut());
 		conn_close(conn, ptr::null_mut());
 	}
-	println!("Hello World!");
 }
 
