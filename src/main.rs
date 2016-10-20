@@ -5,6 +5,7 @@ extern crate getopts;
 use bson::decode_document;
 use libc::c_void;
 use std::ffi::CString;
+use std::ffi::CStr;
 use std::io::Cursor;
 use std::os::raw::c_char;
 use std::ptr;
@@ -50,18 +51,19 @@ extern {
 
     // Cursor data manip
     fn cursor_get_key_i64(cursor: *mut WtCursor, key: *mut i64) -> i32;
-//    fn cursor_get_value_str(cursor: *mut WtCursor, value: *mut *mut c_char) -> i32;
+//    fn cursor_get_key_str(cursor: *mut WtCursor, key: *mut *mut c_char) -> i32;
+    fn cursor_get_value_str(cursor: *mut WtCursor, value: *mut *mut c_char) -> i32;
     fn cursor_get_value_item(cursor: *mut WtCursor, value: *mut *mut u8, sz: *mut usize) -> i32;
 //    fn cursor_get_key_item(cursor: *mut WtCursor, key: *mut *mut u8, sz: *mut usize) -> i32;
 //    fn cursor_set_value(cursor: *mut WtCursor, value: *mut c_void) -> ();
-//    fn cursor_set_key(cursor: *mut WtCursor, key: *mut c_void) -> ();
+    fn cursor_set_key(cursor: *mut WtCursor, key: *mut c_void) -> ();
 
 
     // Cursor actions
 //    fn cursor_insert(cursor: *mut WtCursor) -> i32;
     fn cursor_next(cursor: *mut WtCursor) -> i32;
 //    fn cursor_perv(cursor: *mut WtCursor) -> i32;
-//    fn cursor_search(cursor: *mut WtCursor) -> i32;
+    fn cursor_search(cursor: *mut WtCursor) -> i32;
 //    fn cursor_reset(cursor: *mut WtCursor) -> i32;
 }
 
@@ -79,8 +81,33 @@ fn wt_err(code: i32) -> i32 {
         2 => panic!("WT_OPEN FAIL"),
         _ => 1,
     };
-    println!("code is {}", code);
     return code;
+}
+
+fn get_metadata(session: *mut WtSession, wanted: String) -> String {
+    // WT_CURSOR*
+    let mut cursor: *mut WtCursor = ptr::null_mut();
+
+    // Variables
+    let table_name = CString::new("metadata:").unwrap();
+    let wanted_table = CString::new(wanted).unwrap();
+
+    let mut key : *mut c_char = ptr::null_mut();
+    unsafe {
+        wt_err(cursor_open(session,
+            table_name.as_ptr(),
+            ptr::null_mut(),
+            ptr::null(),
+            &mut cursor));
+
+        cursor_set_key(cursor, wanted_table.as_ptr() as *mut c_void);
+
+        if cursor_search(cursor) == 0 {
+            wt_err(cursor_get_value_str(cursor, &mut key));
+            return CStr::from_ptr(key).to_string_lossy().into_owned();
+        }
+    }
+    return String::new();
 }
 
 fn list_tables(session: *mut WtSession) -> () {
@@ -179,6 +206,8 @@ fn main() {
 
         if matches.opt_present("l") {
             list_tables(session);
+            let want = String::from("table:_mdb_catalog");
+            println!("{}", get_metadata(session, want));
         } else {
             if out_path == None {
                 println!("No Outpath set!");
