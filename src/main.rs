@@ -12,8 +12,7 @@ use std::ffi::CString;
 use std::ffi::CStr;
 use std::io::Cursor;
 use std::os::raw::c_char;
-use std::ptr;
-use std::slice;
+use std::{ptr, slice};
 
 enum WtConnection {}
 enum WtEventHandler {}
@@ -89,7 +88,8 @@ fn wt_err(code: i32) -> i32 {
     return code;
 }
 
-fn get_tablenames(session: *mut WtSession, wanted: String) -> Vec<String> {
+// TODO: Decouple IO so I don't need terrible_print_flag
+fn get_tablenames(session: *mut WtSession, wanted: String, terrible_print_flag: bool) -> Vec<String> {
     // WT_CURSOR*
     let mut cursor: *mut WtCursor = ptr::null_mut();
 
@@ -119,10 +119,11 @@ fn get_tablenames(session: *mut WtSession, wanted: String) -> Vec<String> {
                     &Bson::String(ref s) => s.clone(),
                     _ => String::new(),
                 };
-
-                println!("namespace {} is file {}",
-                         Cyan.paint(ns.clone()),
-                         Blue.paint(file.unwrap().to_string()));
+                if terrible_print_flag {
+                    println!("namespace {} is file {}",
+                             Cyan.paint(ns.clone()),
+                             Blue.paint(file.unwrap().to_string()));
+                }
                 if ns == wanted {
                         let out = match file.unwrap() {
                         &Bson::String(ref s) => s.clone(),
@@ -170,6 +171,7 @@ fn get_metadata(session: *mut WtSession, wanted: String) -> String {
     return String::new();
 }
 
+// TODO: Merge into get_tablenames as they are very similar
 fn list_tables(session: *mut WtSession) -> () {
 
     // WT_CURSOR*
@@ -311,7 +313,7 @@ fn main() {
 
     opts.optopt("d", "dbpath", "set dbpath to read from (Defaults to /data/db)", "DBPATH");
     opts.optopt("o", "outpath", "set dbpath to write to", "OUTPATH");
-    opts.optopt("t", "tables", "list of tables to be copied", "TABLES");
+    opts.optopt("n", "namespaces", "space-separated list of namespaces to be copied", "NAMESPACES");
     opts.optflag("l", "list", "list the table mappings");
     opts.optflag("h", "help", "print this help menu");
 
@@ -329,7 +331,7 @@ fn main() {
         None => CString::new("/data/db").unwrap(),
     };
     let out_path = matches.opt_str("o");
-    let tables = matches.opt_str("t");
+    let namespace_list = matches.opt_str("n");
 
     // WT_CONN*
     let mut conn: *mut WtConnection = ptr::null_mut();
@@ -353,7 +355,7 @@ fn main() {
             list_tables(session);
             let want = String::from("table:_mdb_catalog");
             println!("{}", get_metadata(session, want));
-            println!("{:?}", get_tablenames(session, String::from("test.test")));
+            println!("{:?}", get_tablenames(session, String::from("test.test"), true));
 
         } else {
             if out_path == None {
@@ -365,25 +367,28 @@ fn main() {
                 None => panic!("No Outpath set!"),
             };
 
-            let namespace = match tables.clone() {
+            let namespaces = match namespace_list.clone() {
                 Some(s) => s,
                 None => String::new(),
             };
-            let table_list = get_tablenames(session, namespace.clone());
-            if tables == None {
-                println!("{}", Red.paint("Pass a namespace from the list above with -t"));
+            if namespace_list == None {
+                get_tablenames(session, String::from("test.test"), true);
+                println!("{}", Red.paint("Pass a namespace from the list above with -n"));
                 return();
             }
+            for namespace in namespaces.split(" ") {
+                let table_list = get_tablenames(session, String::from(namespace), false);
 
-            println!("\nOn namespace:  {}", Cyan.paint(namespace.clone()));
-            for table_name in table_list {
-                copy_table(session, wt_out_path.clone(), table_name);
-//                fix_destination_metadata(session, wt_out_path);
+                println!("\nOn namespace:  {}", Cyan.paint(namespace.clone()));
+                for table_name in table_list {
+                    copy_table(session, wt_out_path.clone(), table_name);
+//                    fix_destination_metadata(session, wt_out_path);
+                }
+                println!("{}  {}{}",
+                         "🍻",
+                         Green.paint("Completed operations on namespace:  "),
+                         Cyan.paint(namespace));
             }
-            println!("{}  {}{}",
-                     "🍻",
-                     Green.paint("Completed operations on namespace:  "),
-                     Cyan.paint(namespace));
         }
         session_close(session, ptr::null_mut());
         conn_close(conn, ptr::null_mut());
