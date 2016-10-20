@@ -95,7 +95,6 @@ fn get_tablenames(session: *mut WtSession, wanted: String) -> Vec<String> {
 
     // Variables
     let table_name = CString::new("table:_mdb_catalog").unwrap();
-    let wanted_table = CString::new(wanted.clone()).unwrap();
 
     let mut refetched_value: *mut u8 = ptr::null_mut();
     let mut refetched_len: usize = 0;
@@ -127,7 +126,7 @@ fn get_tablenames(session: *mut WtSession, wanted: String) -> Vec<String> {
                     vec.push(out);
                     if doc.get("idxIdent") != None {
                         let idxdoc = doc.get("idxIdent").unwrap();
-                        for (k,v) in idxdoc.to_json().as_object().unwrap() {
+                        for (_,v) in idxdoc.to_json().as_object().unwrap() {
                             let str = v.to_string().replace("\"","");
                             vec.push(str);
                         }
@@ -176,8 +175,6 @@ fn list_tables(session: *mut WtSession, verbosity: i8) -> () {
     // Variables
     let table_name = CString::new("table:_mdb_catalog").unwrap();
 
-    //let mut x: i64 = 123;
-    //let x_raw = &mut x as *mut i64;
     let mut refetched_key: i64 = 0;
     let mut refetched_value: *mut u8 = ptr::null_mut();
     let mut refetched_len: usize = 0;
