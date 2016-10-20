@@ -88,8 +88,7 @@ fn wt_err(code: i32) -> i32 {
     return code;
 }
 
-// TODO: Decouple IO so I don't need terrible_print_flag
-fn get_tablenames(session: *mut WtSession, wanted: String, terrible_print_flag: bool) -> Vec<String> {
+fn get_tablenames(session: *mut WtSession, wanted: String) -> Vec<String> {
     // WT_CURSOR*
     let mut cursor: *mut WtCursor = ptr::null_mut();
 
@@ -119,11 +118,6 @@ fn get_tablenames(session: *mut WtSession, wanted: String, terrible_print_flag: 
                     &Bson::String(ref s) => s.clone(),
                     _ => String::new(),
                 };
-                if terrible_print_flag {
-                    println!("namespace {} is file {}",
-                             Cyan.paint(ns.clone()),
-                             Blue.paint(file.unwrap().to_string().replace("\"","")));
-                }
                 if ns == wanted {
                     let out = match file.unwrap() {
                         &Bson::String(ref s) => s.clone(),
@@ -171,8 +165,8 @@ fn get_metadata(session: *mut WtSession, wanted: String) -> String {
     return String::new();
 }
 
-// TODO: Merge into get_tablenames as they are very similar
-fn list_tables(session: *mut WtSession) -> () {
+/// Lists the namespace -> (table, indexes) mappings of a WiredTiger db_path
+fn list_tables(session: *mut WtSession, verbosity: i8) -> () {
 
     // WT_CURSOR*
     let mut cursor: *mut WtCursor = ptr::null_mut();
@@ -191,7 +185,9 @@ fn list_tables(session: *mut WtSession) -> () {
             ptr::null_mut(),
             ptr::null(),
             &mut cursor));
-
+        if verbosity == 1 {
+            println!("namespaces: ")
+        }
         while wt_err(cursor_next(cursor)) == 0 {
             wt_err(cursor_get_key_i64(cursor, &mut refetched_key));
             cursor_get_value_item(cursor, &mut refetched_value, &mut refetched_len);
@@ -200,17 +196,23 @@ fn list_tables(session: *mut WtSession) -> () {
             let file = doc.get("ident");
             if file != None {
                 let ns = doc.get("ns").unwrap();
-                println!("namespace {} is file {}",
-                         Cyan.paint(ns.to_string()),
-                         Blue.paint(file.unwrap().to_string()));
-                if doc.get("idxIdent") != None {
-                    let idxdoc = doc.get("idxIdent").unwrap();
-                    println!("indexes:");
-                    for (k,v) in idxdoc.to_json().as_object().unwrap() {
-                        println!("\t{} : {}", k, v);
+                let print_ns = format!("{}", Cyan.paint(ns.to_string().replace("\"","")));
+                if verbosity > 1 {
+                    println!("namespace {} is file {}",
+                             print_ns,
+                             Blue.paint(file.unwrap().to_string().replace("\"","")));
+                    if doc.get("idxIdent") != None {
+                        let idxdoc = doc.get("idxIdent").unwrap();
+                        println!("indexes:");
+                        for (k,v) in idxdoc.to_json().as_object().unwrap() {
+                            println!("\t{} : {}", k, v);
+                        }
                     }
+                    println!("")
                 }
-                println!("")
+                else if verbosity > 0 {
+                    println!("  {}", print_ns);
+                }
             }
         }
         cursor_close(cursor);
@@ -352,7 +354,7 @@ fn main() {
             &mut session));
 
         if matches.opt_present("l") {
-            list_tables(session);
+            list_tables(session, 2);
         } else {
             if out_path == None {
                 println!("No Outpath set!");
@@ -368,12 +370,12 @@ fn main() {
                 None => String::new(),
             };
             if namespace_list == None {
-                get_tablenames(session, String::from("test.test"), true);
+                list_tables(session, 1);
                 println!("{}", Red.paint("Pass a namespace from the list above with -n"));
                 return();
             }
             for namespace in namespaces.split(" ") {
-                let table_list = get_tablenames(session, String::from(namespace), false);
+                let table_list = get_tablenames(session, String::from(namespace));
 
                 println!("\nOn namespace:  {}", Cyan.paint(namespace.clone()));
                 for table_name in table_list {
