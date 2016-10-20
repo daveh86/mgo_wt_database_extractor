@@ -1,10 +1,13 @@
+extern crate bson;
 extern crate libc;
+use bson::decode_document;
 use libc::{c_int, c_void};
 use std::ffi::CString;
 //use std::ffi::CStr;
+use std::io::Cursor;
 use std::os::raw::c_char;
 use std::ptr;
-
+use std::slice;
 
 enum WtConnection {}
 enum WtEventHandler {}
@@ -120,8 +123,9 @@ fn main() {
 			println!("get key returned: {}", ret);
 			println!("key is: {}", refetched_key);
 			cursor_get_value_item(cursor, &mut refetched_value, &mut refetched_len);
-			let stringy = String::from_raw_parts(refetched_value, refetched_len, refetched_len);
-			println!("value is: '{}'", stringy);
+			let slicey = slice::from_raw_parts(refetched_value, refetched_len);
+			let doc = decode_document(&mut Cursor::new(slicey.to_vec())).unwrap();
+			println!("Decoded: {:?}", doc);
 			counter+=1;
 			println!("entry number: {}", counter);
 		}
