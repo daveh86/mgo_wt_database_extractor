@@ -3,6 +3,7 @@ extern crate libc;
 extern crate getopts;
 
 use bson::decode_document;
+use bson::Bson;
 use libc::c_void;
 use std::ffi::CString;
 use std::ffi::CStr;
@@ -82,6 +83,60 @@ fn wt_err(code: i32) -> i32 {
         _ => 1,
     };
     return code;
+}
+
+fn get_tablenames(session: *mut WtSession, wanted: String) -> Vec<String> {
+    // WT_CURSOR*
+    let mut cursor: *mut WtCursor = ptr::null_mut();
+
+    // Variables
+    let table_name = CString::new("table:_mdb_catalog").unwrap();
+    let wanted_table = CString::new(wanted.clone()).unwrap();
+
+    let mut key : *mut c_char = ptr::null_mut();
+    let mut refetched_value: *mut u8 = ptr::null_mut();
+    let mut refetched_len: usize = 0;
+
+    let mut vec :Vec<String> = Vec::new();
+
+    unsafe {
+        wt_err(cursor_open(session,
+            table_name.as_ptr(),
+            ptr::null_mut(),
+            ptr::null(),
+            &mut cursor));
+
+        while wt_err(cursor_next(cursor)) == 0 {
+            cursor_get_value_item(cursor, &mut refetched_value, &mut refetched_len);
+            let slicey = slice::from_raw_parts(refetched_value, refetched_len);
+            let doc = decode_document(&mut Cursor::new(slicey.to_vec())).unwrap();
+            let file = doc.get("ident");
+            if file != None {
+                let ns = match doc.get("ns").unwrap() {
+                    &Bson::String(ref s) => s.clone(),
+                    _ => String::new(),
+                };
+                
+                println!("collection {} is file {}", ns, file.unwrap());
+                if ns == wanted {
+                        let out = match file.unwrap() {
+                        &Bson::String(ref s) => s.clone(),
+                        _ => String::new(),
+                    };
+                    vec.push(out);
+                    if doc.get("idxIdent") != None {
+                        let idxdoc = doc.get("idxIdent").unwrap();
+                        for (k,v) in idxdoc.to_json().as_object().unwrap() {
+                            let str = v.to_string().replace("\"","");
+                            vec.push(str);
+                        }
+                    }
+                }
+            }
+        }
+        cursor_close(cursor);
+    }
+    return vec;
 }
 
 fn get_metadata(session: *mut WtSession, wanted: String) -> String {
@@ -208,6 +263,8 @@ fn main() {
             list_tables(session);
             let want = String::from("table:_mdb_catalog");
             println!("{}", get_metadata(session, want));
+            println!("{:?}", get_tablenames(session, String::from("test.test")));
+            
         } else {
             if out_path == None {
                 println!("No Outpath set!");
