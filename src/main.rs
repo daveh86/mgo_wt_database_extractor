@@ -247,6 +247,7 @@ fn copy_table(src_session: *mut WtSession, out_path: String, table_name: String)
         create_table(dest_session,
                      wt_table_name.as_ptr(),
                      table_config.as_ptr() as *mut i8);
+        println!("\tSuccessfully copied metadata:  {}", table_name);
 
         // Open cursor on our new table
         wt_err(cursor_open(dest_session,
@@ -281,6 +282,7 @@ fn copy_table(src_session: *mut WtSession, out_path: String, table_name: String)
             cursor_set_value_item(dest_cursor, refetched_value, refetched_len);
             wt_err(cursor_insert(dest_cursor));
         }
+        println!("\tSuccessfully copied data:      {}", table_name);
 
         // Cleanup resources in reverse order to how we acquired them
         // TODO: What happens if we exit early due to an error, do we need to clean up?
@@ -361,21 +363,18 @@ fn main() {
                 Some(s) => s,
                 None => panic!("No Outpath set!"),
             };
-            let table_input = match tables {
+            let namespace = match tables {
                 Some(s) => s,
                 None => String::new(),
             };
-            println!("{}", table_input.clone());
-            let table_list = get_tablenames(session, table_input);
-            for table_name in table_list.clone() {
-                println!("{}", table_name);
-            }
-            println!("{}", wt_out_path);
+            let table_list = get_tablenames(session, namespace.clone());
+
+            println!("\nCopying namespace:  {}", namespace);
             for table_name in table_list {
                 copy_table(session, wt_out_path.clone(), table_name);
 //                fix_destination_metadata(session, wt_out_path);
             }
-            println!("do something else");
+            println!("Completed operations on namespace:  {}", namespace);
         }
         session_close(session, ptr::null_mut());
         conn_close(conn, ptr::null_mut());
