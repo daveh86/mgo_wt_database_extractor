@@ -87,16 +87,6 @@ fn list_tables(session: *mut WtSession) -> () {
                 if ret != 0 {
                         println!("Error. opening connection!");
                         return();
-                }	
-                let ret = cursor_open(session,
-                        table_name.as_ptr(),
-                        ptr::null_mut(),
-                        ptr::null(),
-                        &mut cursor);
-
-                if ret != 0 {
-                        println!("Error. opening connection!");
-                        return();
                 }
                 while cursor_next(cursor) == 0 {
                         let ret = cursor_get_key_i64(cursor, &mut refetched_key);
