@@ -2,17 +2,17 @@ extern crate bson;
 extern crate libc;
 extern crate getopts;
 
-use bson::decode_document;
 use bson::Bson;
+use bson::decode_document;
+use getopts::Options;
 use libc::c_void;
+use std::env;
 use std::ffi::CString;
 use std::ffi::CStr;
 use std::io::Cursor;
 use std::os::raw::c_char;
 use std::ptr;
 use std::slice;
-use getopts::Options;
-use std::env;
 
 enum WtConnection {}
 enum WtEventHandler {}
@@ -37,10 +37,11 @@ extern {
 
     fn conn_close(conn: *mut WtConnection,
                   config: *const c_char) -> i32;
-/*
+
     fn create_table(session: *mut WtSession,
                     name: *const c_char, config: *const c_char) -> i32;
 
+/*
     fn drop_table(session: *mut WtSession,
                   name: *const c_char, config: *const c_char) -> i32;
 */
@@ -116,7 +117,7 @@ fn get_tablenames(session: *mut WtSession, wanted: String) -> Vec<String> {
                     &Bson::String(ref s) => s.clone(),
                     _ => String::new(),
                 };
-                
+
                 println!("collection {} is file {}", ns, file.unwrap());
                 if ns == wanted {
                         let out = match file.unwrap() {
@@ -214,6 +215,76 @@ fn print_usage(program: &str, opts: Options) {
     print!("{}", opts.usage(&brief));
 }
 
+fn copy_table(src_session: *mut WtSession, out_path: String, table_name: String) -> i32 {
+    let out_conf = CString::new("create,statistics=(fast)").unwrap();
+
+    let mut dest_conn: *mut WtConnection = ptr::null_mut();
+    let mut dest_session: *mut WtSession = ptr::null_mut();
+    let mut src_cursor: *mut WtCursor = ptr::null_mut();
+    let mut dest_cursor: *mut WtCursor = ptr::null_mut();
+    let wt_table_name = CString::new("table:".to_string() + &table_name).unwrap();
+
+    unsafe {
+        // Acquire resources
+        let out_path_cstr = CString::new(out_path).unwrap();
+        wt_err(conn_open(out_path_cstr.as_ptr(),
+                         ptr::null_mut(),
+                         out_conf.as_ptr(),
+                         &mut dest_conn));
+
+        wt_err(session_open(dest_conn,
+                            ptr::null_mut(),
+                            ptr::null_mut(),
+                            &mut dest_session));
+
+        wt_err(cursor_open(src_session,
+                           wt_table_name.as_ptr(),
+                           ptr::null_mut(),
+                           ptr::null(),
+                           &mut src_cursor));
+
+        // Grab table_config from db_path and use it to create_table in out_path
+        let table_config = get_metadata(src_session, "table:".to_string() + &table_name);
+        create_table(dest_session,
+                     wt_table_name.as_ptr(),
+                     table_config.as_ptr() as *mut i8);
+
+        // Open cursor on our new table
+        wt_err(cursor_open(dest_session,
+                           wt_table_name.as_ptr(),
+                           ptr::null_mut(),
+                           ptr::null(),
+                           &mut dest_cursor));
+
+        // Copy the data
+        let mut refetched_key: i64 = 0;
+        let mut refetched_value: *mut u8 = ptr::null_mut();
+        let mut refetched_len: usize = 0;
+        while wt_err(cursor_next(src_cursor)) == 0 {
+
+            // Fetch the data from db_path
+            wt_err(cursor_get_key_i64(src_cursor, &mut refetched_key));
+            cursor_get_value_item(src_cursor, &mut refetched_value, &mut refetched_len);
+
+            // TODO: Store the data in out_path
+//            wt_err(cursor_set_key_i64(dest_cursor, &mut refetched_key));
+//            cursor_set_value_item(dest_cursor, &mut refetched_value, &mut refetched_len);
+        }
+
+        // Cleanup resources in reverse order to how we acquired them
+        // TODO: What happens if we exit early due to an error, do we need to clean up?
+        cursor_close(dest_cursor);
+        cursor_close(src_cursor);
+        session_close(dest_session, ptr::null_mut());
+        conn_close(dest_conn, ptr::null_mut());
+    }
+    return 0;
+}
+
+//fn fix_destination_metadata(source: *mut WtSession, destination: String) -> i32 {
+//    return 0;
+//}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let program = args[0].clone();
@@ -264,15 +335,34 @@ fn main() {
             let want = String::from("table:_mdb_catalog");
             println!("{}", get_metadata(session, want));
             println!("{:?}", get_tablenames(session, String::from("test.test")));
-            
+
         } else {
             if out_path == None {
                 println!("No Outpath set!");
                 return();
             }
             if tables == None {
-                println!("No tables listed");
+                println!("No tables listed!");
                 return();
+            }
+
+            let wt_out_path = match matches.opt_str("o") {
+                Some(s) => s,
+                None => panic!("No Outpath set!"),
+            };
+            let table_input = match tables {
+                Some(s) => s,
+                None => String::new(),
+            };
+            println!("{}", table_input.clone());
+            let table_list = get_tablenames(session, table_input);
+            for table_name in table_list.clone() {
+                println!("{}", table_name);
+            }
+            println!("{}", wt_out_path);
+            for table_name in table_list {
+                copy_table(session, wt_out_path.clone(), table_name);
+//                fix_destination_metadata(session, wt_out_path);
             }
             println!("do something else");
         }
