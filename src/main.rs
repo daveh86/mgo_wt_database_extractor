@@ -1,13 +1,16 @@
 extern crate bson;
 extern crate libc;
+extern crate getopts;
+
 use bson::decode_document;
 use libc::{c_int, c_void};
 use std::ffi::CString;
-//use std::ffi::CStr;
 use std::io::Cursor;
 use std::os::raw::c_char;
 use std::ptr;
 use std::slice;
+use getopts::Options;
+use std::env;
 
 enum WtConnection {}
 enum WtEventHandler {}
@@ -70,7 +73,6 @@ fn list_tables(session: *mut WtSession) -> () {
         // Variables
         let table_name = CString::new("table:_mdb_catalog").unwrap();
 
-        //let table_conf = CString::new("key_format=q,value_format=S").unwrap();
         //let mut x: i64 = 123;
         //let x_raw = &mut x as *mut i64;
         let mut refetched_key: i64 = 0;
@@ -114,13 +116,42 @@ fn list_tables(session: *mut WtSession) -> () {
 	}
 }
 
+fn print_usage(program: &str, opts: Options) {
+    let brief = format!("Usage: {} [-l] [options]", program);
+    print!("{}", opts.usage(&brief));
+}
+
 fn main() {
+	let args: Vec<String> = env::args().collect();
+	let program = args[0].clone();
+	let mut opts = Options::new();
+
+	opts.optopt("d", "dbpath", "set dbpath to read from (Defaults to /data/db)", "DBPATH");
+	opts.optopt("o", "outpath", "set dbpath to write to", "OUTPATH");
+	opts.optopt("t", "tables", "list of tables to be copied", "TABLES");
+	opts.optflag("l", "list", "list the table mappings");
+	opts.optflag("h", "help", "print this help menu");
+
+	let matches = match opts.parse(&args[1..]) {
+		Ok(m) => { m }
+		Err(f) => { panic!(f.to_string()) }
+	};
+	if matches.opt_present("h") {
+		print_usage(&program, opts);
+		return;
+	}
+		
+	let db_path = match matches.opt_str("d") {
+		Some(s) => CString::new(s).unwrap(),
+		None => CString::new("/data/db").unwrap(),
+	};
+	let out_path = matches.opt_str("o");
+	let tables = matches.opt_str("t");
+
 	// WT_CONN*
 	let mut conn: *mut WtConnection = ptr::null_mut();
 	// WT_SESSION*
         let mut session: *mut WtSession = ptr::null_mut();
-
-	let db_path = CString::new("/data/db").unwrap();
         let db_conf = CString::new("create,statistics=(fast)").unwrap();
 
 	unsafe {
@@ -143,7 +174,19 @@ fn main() {
                         println!("Error opening session!");
                         return();
                 }
-		list_tables(session);
+		if matches.opt_present("l") {
+			list_tables(session);
+		} else {
+			if out_path == None { 
+				println!("No Outpath set!");
+				return();
+			}
+			if tables == None {
+				panic!("No tables listed");
+				return();
+			}
+			println!("do something else");
+		}
 		session_close(session, ptr::null_mut());
 		conn_close(conn, ptr::null_mut());
 	}
