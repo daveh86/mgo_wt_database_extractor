@@ -180,7 +180,6 @@ fn list_tables(session: *mut WtSession) -> () {
     let mut refetched_value: *mut u8 = ptr::null_mut();
     let mut refetched_len: usize = 0;
     unsafe {
-        // TODO: Error handling? https://doc.rust-lang.org/book/error-handling.html
         wt_err(cursor_open(session,
             table_name.as_ptr(),
             ptr::null_mut(),
