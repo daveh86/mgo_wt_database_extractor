@@ -83,6 +83,24 @@ int cursor_get_key_item(WT_CURSOR *cursor, char **key, int *size)
         return (ret);
 }
 
+void cursor_set_value_item(WT_CURSOR *cursor, char *value, int size)
+{
+        WT_ITEM item;
+        item.data = value;
+        item.size = (uint32_t)size;
+
+        cursor->set_value(cursor, &item);
+}
+
+void cursor_set_key_item(WT_CURSOR *cursor, char *key, int size)
+{
+        WT_ITEM item;
+        item.data = key;
+        item.size = (uint32_t)size;
+
+        cursor->set_key(cursor, &item);
+}
+
 void cursor_set_value(WT_CURSOR *cursor, void *value) 
 {
 	cursor->set_value(cursor, value);

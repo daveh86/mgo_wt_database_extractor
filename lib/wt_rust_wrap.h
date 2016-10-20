@@ -25,6 +25,8 @@ int cursor_get_key_item(WT_CURSOR *cursor, char **key, int *size);
 // Cursor Set-ers
 void cursor_set_value(WT_CURSOR *cursor, void *value);
 void cursor_set_key(WT_CURSOR *cursor, void *key);
+void cursor_set_value_item(WT_CURSOR *cursor, char *value, int size);
+void cursor_set_key_item(WT_CURSOR *cursor, char *key, int size);
 
 // Cursor manip
 int cursor_insert(WT_CURSOR *cursor);
