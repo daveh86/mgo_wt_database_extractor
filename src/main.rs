@@ -2,8 +2,7 @@ extern crate bson;
 extern crate libc;
 extern crate getopts;
 
-use bson::Bson;
-use bson::decode_document;
+use bson::{Bson, decode_document};
 use getopts::Options;
 use libc::c_void;
 use std::env;
@@ -94,7 +93,6 @@ fn get_tablenames(session: *mut WtSession, wanted: String) -> Vec<String> {
     let table_name = CString::new("table:_mdb_catalog").unwrap();
     let wanted_table = CString::new(wanted.clone()).unwrap();
 
-    let mut key : *mut c_char = ptr::null_mut();
     let mut refetched_value: *mut u8 = ptr::null_mut();
     let mut refetched_len: usize = 0;
 
