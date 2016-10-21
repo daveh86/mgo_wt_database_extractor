@@ -372,16 +372,17 @@ fn fix_destination_metadata(src_session: *mut WtSession, out_path: String, names
         // Metadata doesn't exist. So make the table
         if exists != 0 {
             let table_config = get_metadata(src_session, "table:_mdb_catalog".to_string());
+            let _table_cfg = CString::new(table_config.clone()).unwrap();
             create_table(dest_session,
                      catalog_table.as_ptr(),
-                     table_config.as_ptr() as *mut i8);
+                     _table_cfg.as_ptr());
             wt_err(cursor_open(dest_session,
                            catalog_table.as_ptr(),
                            ptr::null_mut(),
                            ptr::null(),
                            &mut dest_cursor));
         }
-        cursor_set_key(dest_cursor, refetched_key as *mut c_void);        
+        cursor_set_key(dest_cursor, refetched_key as *mut c_void);
         cursor_set_value_item(dest_cursor, refetched_value, refetched_len);
         wt_err(cursor_insert(dest_cursor));
         cursor_close(dest_cursor);
@@ -402,9 +403,10 @@ fn fix_destination_metadata(src_session: *mut WtSession, out_path: String, names
         // No sizeStorer table, so we make that
         if exists != 0 {
             let table_config = get_metadata(src_session, "table:sizeStorer".to_string());
+            let _table_cfg = CString::new(table_config.clone()).unwrap();
             create_table(dest_session,
                      size_store_table.as_ptr(),
-                     table_config.as_ptr() as *mut i8);
+                     _table_cfg.as_ptr());
             wt_err(cursor_open(dest_session,
                            size_store_table.as_ptr(),
                            ptr::null_mut(),
@@ -413,7 +415,7 @@ fn fix_destination_metadata(src_session: *mut WtSession, out_path: String, names
             // Add the catalog entry to sizeStorer, since we created
             cursor_set_key_item(src_cursor, catalog_table.as_ptr() as *mut u8, 18);
             wt_err(cursor_search(src_cursor));
-            wt_err(cursor_get_value_item(src_cursor, &mut refetched_value, &mut refetched_len));    
+            wt_err(cursor_get_value_item(src_cursor, &mut refetched_value, &mut refetched_len));
             cursor_set_key_item(dest_cursor, catalog_table.as_ptr() as *mut u8, 18);
             cursor_set_value_item(dest_cursor, refetched_value, refetched_len);
             cursor_insert(dest_cursor);
