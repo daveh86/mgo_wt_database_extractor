@@ -271,26 +271,28 @@ fn copy_table(src_session: *mut WtSession, out_path: String, table_name: String)
         let is_index = table_name.contains("index-");
         let mut refetched_key: i64 = 0;
         let mut refetched_value: *mut u8 = ptr::null_mut();
-        let mut refetched_len: usize = 0;
+        let mut refetched_key_item: *mut u8 = ptr::null_mut();
+        let mut refetched_len_value: usize = 0;
+        let mut refetched_len_key: usize = 0;
         while wt_err(cursor_next(src_cursor)) == 0 {
 
             // Fetch the data from db_path
             if is_index {
-                wt_err(cursor_get_key_item(src_cursor, &mut refetched_value, &mut refetched_len));
+                wt_err(cursor_get_key_item(src_cursor, &mut refetched_key_item, &mut refetched_len_key));
             }
             else {
                 wt_err(cursor_get_key_i64(src_cursor, &mut refetched_key));
             }
-            wt_err(cursor_get_value_item(src_cursor, &mut refetched_value, &mut refetched_len));
+            wt_err(cursor_get_value_item(src_cursor, &mut refetched_value, &mut refetched_len_value));
 
             // Store the data in out_path
             if is_index {
-                cursor_set_key_item(dest_cursor, refetched_value, refetched_len);
+                cursor_set_key_item(dest_cursor, refetched_key_item, refetched_len_key);
             }
             else {
                 cursor_set_key(dest_cursor, refetched_key as *mut c_void);
             }
-            cursor_set_value_item(dest_cursor, refetched_value, refetched_len);
+            cursor_set_value_item(dest_cursor, refetched_value, refetched_len_value);
             wt_err(cursor_insert(dest_cursor));
         }
         println!("\tSuccessfully copied data:      {}", table_name);
