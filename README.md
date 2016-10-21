@@ -7,7 +7,7 @@ installed (`make install`) wiredtiger on your system:
 http://source.wiredtiger.com/develop/build-posix.html
 
 NB: If you intend to open existing MongoDB databases, you will need to 
-ensure you build wiredtiger with snappy:
+ensure you build wiredtiger with snappy and use a WiredTiger branch for your MongoDB version:
 
     # macOS, or 'sudo apt-get install snappy' on some linux distros
     brew install snappy
@@ -15,6 +15,7 @@ ensure you build wiredtiger with snappy:
     # Build and install WiredTiger
     git clone git@github.com:wiredtiger/wiredtiger.git
     cd wiredtiger
+    git checkout mongodb-3.4
     ./configure --enable-strict --with-builtins=snappy,zlib --enable-verbose
     make
     make install
