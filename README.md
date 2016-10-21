@@ -1,3 +1,11 @@
+What's really stored in your MongoDB WiredTiger [data directory](https://docs.mongodb.com/manual/reference/glossary/#term-data-directory), your `mongod --dbpath`? 
+
+- Learn what's there and how to extract entire [namespaces](https://docs.mongodb.com/manual/reference/glossary/#term-namespace) including their associated [collections](https://docs.mongodb.com/manual/reference/glossary/#term-collection) and [indexes](https://docs.mongodb.com/manual/reference/glossary/#term-index)
+- Consolidate multiple data directories into a large one or atomise a large data directory into many smaller ones
+- Requires no running `mongod`
+- Automatically fixes the `_mdb_catalog.wt` and `sizeStorer.wt` system databases so you can start running a [mongod](https://www.mongodb.com/download-center?jmp=nav#community) and verify with any downstream `mongo shell`, [Compass](https://www.mongodb.com/download-center?jmp=nav#compass) or [your favorite MongoDB tools](https://docs.mongodb.com/ecosystem/tools/administration-interfaces/)
+
+
 Directory structure
 -------------------
 
@@ -60,3 +68,10 @@ cargo run -- -l
 # from default dbpath /data/db to outpath WT_TEST
 cargo run -- -n "zips.small_zips zips.zips" -o WT_TEST
 ```
+
+
+Disclaimer
+----------
+
+This software is not supported by [MongoDB, Inc.](http://www.mongodb.com) under any of their commercial support subscriptions or otherwise. Any usage of this tool is at your own risk.
+Bug reports, feature requests and questions can be posted in the [Issues](https://github.com/daveh86/mgo_wt_database_extractor/issues?state=open) section here on github.
