@@ -15,7 +15,7 @@ ensure you build wiredtiger with snappy:
     # Build and install WiredTiger
     git clone git@github.com:wiredtiger/wiredtiger.git
     cd wiredtiger
-    ./configure --with-spinlock=gcc --enable-strict CFLAGS=-ggdb --with-builtins=snappy
+    ./configure --enable-strict --with-builtins=snappy,zlib --enable-verbose
     make
     make install
 
