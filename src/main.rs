@@ -145,7 +145,7 @@ fn get_metadata(session: *mut WtSession, wanted: String) -> String {
     let mut cursor: *mut WtCursor = ptr::null_mut();
 
     // Variables
-    let table_name = CString::new("metadata:").unwrap();
+    let table_name = CString::new("metadata:create").unwrap();
     let wanted_table = CString::new(wanted).unwrap();
 
     let mut key : *mut c_char = ptr::null_mut();
@@ -254,7 +254,7 @@ fn copy_table(src_session: *mut WtSession, out_path: String, table_name: String)
 
         // Grab table_config from db_path and use it to create_table in out_path
         let table_config = get_metadata(src_session, "table:".to_string() + &table_name);
-        let _table_cfg = CString::new(table_config).unwrap();
+        let _table_cfg = CString::new(table_config.clone()).unwrap();
         create_table(dest_session,
                      wt_table_name.as_ptr(),
                      _table_cfg.as_ptr());
