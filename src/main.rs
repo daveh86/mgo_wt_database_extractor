@@ -254,9 +254,10 @@ fn copy_table(src_session: *mut WtSession, out_path: String, table_name: String)
 
         // Grab table_config from db_path and use it to create_table in out_path
         let table_config = get_metadata(src_session, "table:".to_string() + &table_name);
+        let _table_cfg = CString::new(table_config).unwrap();
         create_table(dest_session,
                      wt_table_name.as_ptr(),
-                     table_config.as_ptr() as *mut i8);
+                     _table_cfg.as_ptr());
         println!("\tSuccessfully copied metadata:  {}", table_name);
 
         // Open cursor on our new table
