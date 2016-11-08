@@ -192,7 +192,13 @@ fn list_tables(session: *mut WtSession, verbosity: i8) -> () {
             wt_err(cursor_get_key_i64(cursor, &mut refetched_key));
             wt_err(cursor_get_value_item(cursor, &mut refetched_value, &mut refetched_len));
             let slicey = slice::from_raw_parts(refetched_value, refetched_len);
-            let doc = decode_document(&mut Cursor::new(slicey.to_vec())).unwrap();
+            let rdoc = decode_document(&mut Cursor::new(slicey.to_vec()));
+            if rdoc.is_err() {
+                // TODO: Fix BSON type 19 = Decimal128 upstream too
+                println!("{}", Red.paint("Could not decode a DB (e.g. Decimal128, perhaps in a document validator), skipping and continuing"));
+                continue;
+            }
+            let doc = rdoc.unwrap();
             let file = doc.get("ident");
             if file != None {
                 let ns = doc.get("ns").unwrap();
@@ -522,4 +528,3 @@ fn main() {
         conn_close(conn, ptr::null_mut());
     }
 }
-
